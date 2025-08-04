@@ -12,15 +12,16 @@ class SecurityGuardGame {
         
         // Action bar mechanics
         this.actionBarValue = 100; // 0-100
-        this.actionBarDepletionRate = 0.15; // starts slower
-        this.baseDepletionRate = 0.15;
-        this.maxDepletionRate = 0.8; // reduced max difficulty
-        this.difficultyIncrease = 0.0003; // much more gradual increase
+        this.actionBarDepletionRate = 0.08; // starts very slow
+        this.baseDepletionRate = 0.08;
+        this.maxDepletionRate = 0.4; // much lower max difficulty
+        this.difficultyIncrease = 0.00005; // extremely gradual increase
         this.difficultyLevel = 0; // tracks current difficulty level
+        this.timeAlive = 0; // track time for gradual difficulty
         
         // Monster mechanics
         this.monsterDistance = 100; // meters
-        this.monsterSpeed = 0.5; // meters per second when asleep
+        this.monsterAdvanceDistance = 10; // meters moved when player falls asleep
         
         // Abilities
         this.coffeeUses = 4;
@@ -126,11 +127,11 @@ class SecurityGuardGame {
     
     generateConstructionEquipment() {
         const equipment = [];
-        for (let i = 0; i < 8; i++) {
+        for (let i = 0; i < 12; i++) {
             equipment.push({
                 x: Math.random() * this.canvas.width * 2,
                 type: Math.floor(Math.random() * 4), // excavator, crane, truck, etc.
-                size: Math.random() * 30 + 20
+                size: Math.random() * 60 + 40 // Much larger and more visible
             });
         }
         return equipment;
@@ -321,12 +322,12 @@ class SecurityGuardGame {
         this.isAsleep = false;
         this.actionBarValue = 100;
         
-        // Reset difficulty progression after monster advances
-        this.difficultyLevel = Math.max(0, this.difficultyLevel - 0.3);
-        this.actionBarDepletionRate = Math.max(
-            this.baseDepletionRate,
-            this.baseDepletionRate + (this.difficultyLevel * this.difficultyIncrease * 1000)
-        );
+        // Monster advances by fixed amount when player falls asleep
+        this.monsterDistance -= this.monsterAdvanceDistance;
+        
+        // Significantly reset difficulty progression after falling asleep
+        this.difficultyLevel = Math.max(0, this.difficultyLevel * 0.5); // Cut difficulty in half
+        this.actionBarDepletionRate = this.baseDepletionRate + (this.difficultyLevel * 0.1);
         
         // Hide sleep overlay
         const overlay = document.getElementById('sleepOverlay');
@@ -354,29 +355,31 @@ class SecurityGuardGame {
         
         this.survivalTime += deltaTime;
         
+        this.timeAlive += deltaTime;
+        
         // Update cooldowns
         if (this.napCooldown > 0) {
             this.napCooldown = Math.max(0, this.napCooldown - deltaTime);
         }
         
-        // Increase difficulty over time more gradually
-        this.difficultyLevel += deltaTime * this.difficultyIncrease;
+        // Much more gradual difficulty increase - only increases every 30 seconds
+        if (this.timeAlive > 30000) { // After 30 seconds
+            this.difficultyLevel += deltaTime * this.difficultyIncrease;
+        }
+        
         this.actionBarDepletionRate = Math.min(
             this.maxDepletionRate,
-            this.baseDepletionRate + (this.difficultyLevel * 0.001)
+            this.baseDepletionRate + (this.difficultyLevel * 0.01)
         );
         
         if (!this.isAsleep) {
-            // Deplete action bar
+            // Deplete action bar much more slowly
             this.actionBarValue -= this.actionBarDepletionRate * (deltaTime / 16.67); // Normalize to 60fps
             
             if (this.actionBarValue <= 0) {
                 this.actionBarValue = 0;
                 this.fallAsleep();
             }
-        } else {
-            // Monster moves forward when asleep
-            this.monsterDistance -= this.monsterSpeed * (deltaTime / 1000);
         }
         
         // Update UI
@@ -408,8 +411,18 @@ class SecurityGuardGame {
     }
     
     render() {
-        // Clear canvas
-        this.ctx.fillStyle = '#001122';
+        // Clear canvas with darker background
+        this.ctx.fillStyle = '#000811';
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+        
+        // Add vignette effect for atmosphere
+        const vignette = this.ctx.createRadialGradient(
+            this.canvas.width / 2, this.canvas.height / 2, 0,
+            this.canvas.width / 2, this.canvas.height / 2, Math.max(this.canvas.width, this.canvas.height) * 0.8
+        );
+        vignette.addColorStop(0, 'rgba(0, 8, 17, 0)');
+        vignette.addColorStop(1, 'rgba(0, 8, 17, 0.6)');
+        this.ctx.fillStyle = vignette;
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
         
         // Render night sky
@@ -421,8 +434,29 @@ class SecurityGuardGame {
         // Render monster
         this.renderMonster();
         
+        // Add screen grain/noise effect
+        this.renderScreenGrain();
+        
         // Render crosshair
         this.renderCrosshair();
+    }
+    
+    renderScreenGrain() {
+        // Add subtle grain effect for atmosphere
+        const imageData = this.ctx.createImageData(this.canvas.width, this.canvas.height);
+        const data = imageData.data;
+        
+        for (let i = 0; i < data.length; i += 4) {
+            if (Math.random() > 0.97) {
+                const intensity = Math.random() * 30;
+                data[i] = intensity;     // Red
+                data[i + 1] = intensity; // Green  
+                data[i + 2] = intensity; // Blue
+                data[i + 3] = 20;        // Alpha
+            }
+        }
+        
+        this.ctx.putImageData(imageData, 0, 0);
     }
     
     renderSky() {
@@ -623,41 +657,124 @@ class SecurityGuardGame {
         const size = equipment.size;
         
         switch(equipment.type) {
-            case 0: // Excavator
-                this.ctx.fillStyle = '#ffaa00';
+            case 0: // Excavator - Much more detailed
+                // Main body with gradient
+                const excavatorGradient = this.ctx.createLinearGradient(x, 0, x + size * 0.8, 0);
+                excavatorGradient.addColorStop(0, '#ffcc44');
+                excavatorGradient.addColorStop(1, '#cc8800');
+                this.ctx.fillStyle = excavatorGradient;
                 this.ctx.fillRect(x, groundLevel - size * 0.4, size * 0.8, size * 0.4);
-                // Excavator arm
-                this.ctx.fillStyle = '#cc8800';
-                this.ctx.fillRect(x + size * 0.6, groundLevel - size * 0.6, size * 0.4, size * 0.2);
-                break;
-            case 1: // Crane
-                this.ctx.fillStyle = '#ff6600';
-                this.ctx.fillRect(x, groundLevel - size * 0.3, size * 0.6, size * 0.3);
-                // Crane boom
-                this.ctx.strokeStyle = '#cc4400';
-                this.ctx.lineWidth = 3;
+                
+                // Cab
+                this.ctx.fillStyle = '#444444';
+                this.ctx.fillRect(x + size * 0.1, groundLevel - size * 0.6, size * 0.3, size * 0.25);
+                
+                // Excavator arm with joints
+                this.ctx.strokeStyle = '#aa6600';
+                this.ctx.lineWidth = size * 0.08;
                 this.ctx.beginPath();
-                this.ctx.moveTo(x + size * 0.3, groundLevel - size * 0.3);
+                this.ctx.moveTo(x + size * 0.6, groundLevel - size * 0.3);
+                this.ctx.lineTo(x + size * 1.2, groundLevel - size * 0.7);
+                this.ctx.lineTo(x + size * 1.6, groundLevel - size * 0.4);
+                this.ctx.stroke();
+                
+                // Bucket
+                this.ctx.fillStyle = '#666666';
+                this.ctx.fillRect(x + size * 1.5, groundLevel - size * 0.5, size * 0.2, size * 0.15);
+                
+                // Tracks
+                this.ctx.fillStyle = '#333333';
+                this.ctx.fillRect(x, groundLevel - size * 0.1, size * 0.8, size * 0.1);
+                break;
+                
+            case 1: // Tower Crane - Much taller and more visible
+                // Tower
+                this.ctx.fillStyle = '#ff8844';
+                this.ctx.fillRect(x + size * 0.3, groundLevel - size * 1.5, size * 0.1, size * 1.5);
+                
+                // Base
+                this.ctx.fillStyle = '#cc6600';
+                this.ctx.fillRect(x, groundLevel - size * 0.3, size * 0.7, size * 0.3);
+                
+                // Horizontal boom
+                this.ctx.strokeStyle = '#dd7700';
+                this.ctx.lineWidth = size * 0.05;
+                this.ctx.beginPath();
+                this.ctx.moveTo(x + size * 0.35, groundLevel - size * 1.3);
+                this.ctx.lineTo(x + size * 2.0, groundLevel - size * 1.3);
+                this.ctx.stroke();
+                
+                // Counter jib
+                this.ctx.beginPath();
+                this.ctx.moveTo(x + size * 0.35, groundLevel - size * 1.3);
+                this.ctx.lineTo(x - size * 0.5, groundLevel - size * 1.3);
+                this.ctx.stroke();
+                
+                // Hook cable
+                this.ctx.strokeStyle = '#666666';
+                this.ctx.lineWidth = 2;
+                this.ctx.beginPath();
+                this.ctx.moveTo(x + size * 1.5, groundLevel - size * 1.3);
                 this.ctx.lineTo(x + size * 1.5, groundLevel - size * 0.8);
                 this.ctx.stroke();
                 break;
-            case 2: // Truck
-                this.ctx.fillStyle = '#4444aa';
-                this.ctx.fillRect(x, groundLevel - size * 0.3, size, size * 0.3);
-                // Wheels
+                
+            case 2: // Truck - More detailed
+                // Main body
+                this.ctx.fillStyle = '#5566cc';
+                this.ctx.fillRect(x, groundLevel - size * 0.4, size, size * 0.4);
+                
+                // Cab
+                this.ctx.fillStyle = '#334488';
+                this.ctx.fillRect(x, groundLevel - size * 0.6, size * 0.3, size * 0.25);
+                
+                // Windshield
+                this.ctx.fillStyle = '#88aadd';
+                this.ctx.fillRect(x + size * 0.05, groundLevel - size * 0.55, size * 0.2, size * 0.15);
+                
+                // Large wheels with rims
                 this.ctx.fillStyle = '#222222';
                 this.ctx.beginPath();
-                this.ctx.arc(x + size * 0.2, groundLevel, size * 0.1, 0, Math.PI * 2);
-                this.ctx.arc(x + size * 0.8, groundLevel, size * 0.1, 0, Math.PI * 2);
+                this.ctx.arc(x + size * 0.15, groundLevel, size * 0.12, 0, Math.PI * 2);
+                this.ctx.arc(x + size * 0.85, groundLevel, size * 0.12, 0, Math.PI * 2);
+                this.ctx.fill();
+                
+                // Wheel rims
+                this.ctx.fillStyle = '#666666';
+                this.ctx.beginPath();
+                this.ctx.arc(x + size * 0.15, groundLevel, size * 0.08, 0, Math.PI * 2);
+                this.ctx.arc(x + size * 0.85, groundLevel, size * 0.08, 0, Math.PI * 2);
                 this.ctx.fill();
                 break;
-            case 3: // Cement mixer
-                this.ctx.fillStyle = '#888888';
-                this.ctx.fillRect(x, groundLevel - size * 0.4, size * 0.7, size * 0.4);
-                // Mixing drum
+                
+            case 3: // Cement mixer - More detailed
+                // Truck base
+                this.ctx.fillStyle = '#999999';
+                this.ctx.fillRect(x, groundLevel - size * 0.3, size * 0.8, size * 0.3);
+                
+                // Rotating drum with texture
+                this.ctx.fillStyle = '#bbbbbb';
                 this.ctx.beginPath();
-                this.ctx.arc(x + size * 0.35, groundLevel - size * 0.2, size * 0.25, 0, Math.PI * 2);
+                this.ctx.arc(x + size * 0.5, groundLevel - size * 0.3, size * 0.3, 0, Math.PI * 2);
                 this.ctx.fill();
+                
+                // Drum stripes
+                this.ctx.strokeStyle = '#888888';
+                this.ctx.lineWidth = 3;
+                for (let i = 0; i < 6; i++) {
+                    const angle = (i / 6) * Math.PI * 2;
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(x + size * 0.5, groundLevel - size * 0.3);
+                    this.ctx.lineTo(
+                        x + size * 0.5 + Math.cos(angle) * size * 0.25,
+                        groundLevel - size * 0.3 + Math.sin(angle) * size * 0.25
+                    );
+                    this.ctx.stroke();
+                }
+                
+                // Chute
+                this.ctx.fillStyle = '#777777';
+                this.ctx.fillRect(x + size * 0.7, groundLevel - size * 0.15, size * 0.3, size * 0.1);
                 break;
         }
     }
