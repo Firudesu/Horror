@@ -37,6 +37,11 @@ class SecurityGuardGame {
         this.cloudPositions = this.generateClouds();
         this.treePositions = this.generateTrees();
         this.buildingPositions = this.generateBuildings();
+        this.constructionEquipment = this.generateConstructionEquipment();
+        this.fencePositions = this.generateFences();
+        this.lightPoles = this.generateLightPoles();
+        this.particleSystem = [];
+        this.fogOpacity = 0.1;
         
         // Input handling
         this.setupEventListeners();
@@ -106,14 +111,54 @@ class SecurityGuardGame {
     
     generateBuildings() {
         const buildings = [];
-        for (let i = 0; i < 8; i++) {
+        for (let i = 0; i < 12; i++) {
             buildings.push({
-                x: Math.random() * this.canvas.width * 2,
-                height: Math.random() * 150 + 100,
-                width: Math.random() * 80 + 60
+                x: Math.random() * this.canvas.width * 3,
+                height: Math.random() * 200 + 120,
+                width: Math.random() * 100 + 80,
+                type: Math.floor(Math.random() * 3), // Different building types
+                windowPattern: Math.floor(Math.random() * 4),
+                craneHeight: Math.random() * 100 + 50
             });
         }
         return buildings;
+    }
+    
+    generateConstructionEquipment() {
+        const equipment = [];
+        for (let i = 0; i < 8; i++) {
+            equipment.push({
+                x: Math.random() * this.canvas.width * 2,
+                type: Math.floor(Math.random() * 4), // excavator, crane, truck, etc.
+                size: Math.random() * 30 + 20
+            });
+        }
+        return equipment;
+    }
+    
+    generateFences() {
+        const fences = [];
+        for (let i = 0; i < 15; i++) {
+            fences.push({
+                x: Math.random() * this.canvas.width * 2,
+                height: 40 + Math.random() * 20,
+                posts: Math.floor(Math.random() * 8) + 4
+            });
+        }
+        return fences;
+    }
+    
+    generateLightPoles() {
+        const poles = [];
+        for (let i = 0; i < 6; i++) {
+            poles.push({
+                x: Math.random() * this.canvas.width * 2,
+                height: 80 + Math.random() * 40,
+                flickering: Math.random() > 0.7,
+                brightness: Math.random()
+            });
+        }
+        return poles;
     }
     
     setupEventListeners() {
@@ -381,37 +426,90 @@ class SecurityGuardGame {
     }
     
     renderSky() {
-        // Night sky gradient
+        // Enhanced night sky gradient with more depth
         const gradient = this.ctx.createLinearGradient(0, 0, 0, this.canvas.height / 2);
-        gradient.addColorStop(0, '#001133');
-        gradient.addColorStop(1, '#002244');
+        gradient.addColorStop(0, '#000811');
+        gradient.addColorStop(0.3, '#001133');
+        gradient.addColorStop(0.7, '#002244');
+        gradient.addColorStop(1, '#003355');
         
         this.ctx.fillStyle = gradient;
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height / 2);
         
-        // Stars
-        this.ctx.fillStyle = '#ffffff';
-        for (let i = 0; i < 50; i++) {
-            const x = (i * 137) % this.canvas.width;
-            const y = (i * 73) % (this.canvas.height / 3);
-            const brightness = Math.sin(this.survivalTime * 0.001 + i) * 0.5 + 0.5;
-            this.ctx.globalAlpha = brightness * 0.8;
-            this.ctx.fillRect(x, y, 2, 2);
-        }
-        this.ctx.globalAlpha = 1;
+        // Moon with glow
+        const moonX = this.canvas.width * 0.8;
+        const moonY = this.canvas.height * 0.15;
+        const moonRadius = 30;
         
-        // Clouds
-        this.cloudPositions.forEach(cloud => {
+        // Moon glow
+        const moonGlow = this.ctx.createRadialGradient(moonX, moonY, 0, moonX, moonY, moonRadius * 3);
+        moonGlow.addColorStop(0, 'rgba(220, 220, 255, 0.1)');
+        moonGlow.addColorStop(1, 'rgba(220, 220, 255, 0)');
+        this.ctx.fillStyle = moonGlow;
+        this.ctx.fillRect(moonX - moonRadius * 3, moonY - moonRadius * 3, moonRadius * 6, moonRadius * 6);
+        
+        // Moon surface
+        this.ctx.fillStyle = '#e6e6ff';
+        this.ctx.beginPath();
+        this.ctx.arc(moonX, moonY, moonRadius, 0, Math.PI * 2);
+        this.ctx.fill();
+        
+        // Moon craters
+        this.ctx.fillStyle = 'rgba(200, 200, 230, 0.3)';
+        this.ctx.beginPath();
+        this.ctx.arc(moonX - 8, moonY - 5, 4, 0, Math.PI * 2);
+        this.ctx.arc(moonX + 6, moonY + 8, 3, 0, Math.PI * 2);
+        this.ctx.arc(moonX - 2, moonY + 10, 2, 0, Math.PI * 2);
+        this.ctx.fill();
+        
+        // Enhanced stars with twinkling
+        for (let i = 0; i < 120; i++) {
+            const x = (i * 137) % this.canvas.width;
+            const y = (i * 73) % (this.canvas.height / 2.5);
+            const brightness = Math.sin(this.survivalTime * 0.002 + i) * 0.5 + 0.5;
+            const size = Math.sin(this.survivalTime * 0.003 + i * 2) * 0.5 + 1;
+            
+            this.ctx.fillStyle = `rgba(255, 255, 255, ${brightness * 0.9})`;
+            this.ctx.beginPath();
+            this.ctx.arc(x, y, size, 0, Math.PI * 2);
+            this.ctx.fill();
+            
+            // Occasional bright stars
+            if (i % 15 === 0) {
+                this.ctx.fillStyle = `rgba(255, 255, 200, ${brightness * 0.6})`;
+                this.ctx.beginPath();
+                this.ctx.arc(x, y, size + 1, 0, Math.PI * 2);
+                this.ctx.fill();
+            }
+        }
+        
+        // Enhanced clouds with more detail
+        this.cloudPositions.forEach((cloud, index) => {
             cloud.x -= cloud.speed;
-            if (cloud.x < -cloud.size) {
+            if (cloud.x < -cloud.size * 2) {
                 cloud.x = this.canvas.width + cloud.size;
             }
             
-            this.ctx.fillStyle = 'rgba(40, 40, 60, 0.6)';
-            this.ctx.beginPath();
-            this.ctx.arc(cloud.x, cloud.y, cloud.size, 0, Math.PI * 2);
-            this.ctx.fill();
+            // Multiple cloud layers for depth
+            const layers = 3;
+            for (let layer = 0; layer < layers; layer++) {
+                const offset = layer * 8;
+                const opacity = 0.4 - (layer * 0.1);
+                const layerSize = cloud.size - (layer * 5);
+                
+                this.ctx.fillStyle = `rgba(${30 + layer * 10}, ${30 + layer * 10}, ${50 + layer * 15}, ${opacity})`;
+                this.ctx.beginPath();
+                this.ctx.arc(cloud.x + offset, cloud.y + offset, layerSize, 0, Math.PI * 2);
+                this.ctx.fill();
+            }
         });
+        
+        // Atmospheric fog/haze
+        const fogGradient = this.ctx.createLinearGradient(0, this.canvas.height * 0.3, 0, this.canvas.height * 0.7);
+        fogGradient.addColorStop(0, `rgba(40, 50, 80, 0)`);
+        fogGradient.addColorStop(1, `rgba(40, 50, 80, ${this.fogOpacity})`);
+        this.ctx.fillStyle = fogGradient;
+        this.ctx.fillRect(0, this.canvas.height * 0.3, this.canvas.width, this.canvas.height * 0.4);
     }
     
     renderEnvironment() {
