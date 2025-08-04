@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Night Security - Philippine Construction Site</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #000;
+            font-family: 'Courier New', monospace;
+            overflow: hidden;
+            cursor: crosshair;
+        }
+
+        #gameCanvas {
+            display: block;
+            background: #001122;
+        }
+
+        #ui {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        #actionBar {
+            position: absolute;
+            bottom: 50px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 400px;
+            height: 30px;
+            background: rgba(50, 50, 50, 0.8);
+            border: 2px solid #fff;
+            border-radius: 15px;
+            overflow: hidden;
+        }
+
+        #actionBarFill {
+            height: 100%;
+            background: linear-gradient(90deg, #ff4444, #ffaa44, #44ff44);
+            transition: width 0.1s ease;
+            border-radius: 13px;
+        }
+
+        #abilities {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: #fff;
+            font-size: 14px;
+        }
+
+        .ability {
+            margin: 5px 0;
+            padding: 8px 12px;
+            background: rgba(0, 0, 0, 0.7);
+            border-radius: 5px;
+            border: 1px solid #555;
+        }
+
+        .ability.available {
+            border-color: #4CAF50;
+            color: #4CAF50;
+        }
+
+        .ability.unavailable {
+            border-color: #f44336;
+            color: #f44336;
+        }
+
+        #monsterDistance {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            color: #fff;
+            font-size: 16px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 10px;
+            border-radius: 5px;
+        }
+
+        #instructions {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #fff;
+            text-align: center;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 20px;
+            border-radius: 10px;
+            max-width: 500px;
+        }
+
+        #instructions.hidden {
+            display: none;
+        }
+
+        .sleep-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.5s ease;
+        }
+
+        .sleep-overlay.active {
+            opacity: 0.9;
+        }
+
+        #sleepText {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #ff4444;
+            font-size: 24px;
+            text-align: center;
+            opacity: 0;
+        }
+
+        #sleepText.show {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas"></canvas>
+    
+    <div id="ui">
+        <div id="abilities">
+            <div class="ability available" id="napAbility">1 - Quick Nap (Restore 30%)</div>
+            <div class="ability available" id="coffeeAbility">2 - Coffee (4 remaining)</div>
+            <div class="ability available" id="lightAbility">3 - Security Light (3 remaining)</div>
+        </div>
+        
+        <div id="monsterDistance">
+            Monster Distance: <span id="distanceValue">100m</span>
+        </div>
+        
+        <div id="actionBar">
+            <div id="actionBarFill" style="width: 100%"></div>
+        </div>
+        
+        <div id="instructions">
+            <h2>Night Security - Philippine Construction Site</h2>
+            <p>You are a security guard on a dark construction site. A monster approaches when you close your eyes.</p>
+            <p><strong>Controls:</strong></p>
+            <p>• Click LEFT MOUSE repeatedly to stay awake</p>
+            <p>• Press 1 for Quick Nap (restores 30%)</p>
+            <p>• Press 2 for Coffee (full restore, 4 uses)</p>
+            <p>• Press 3 for Security Light (pushes monster back, 3 uses)</p>
+            <p><strong>Survive as long as possible!</strong></p>
+            <p>Click anywhere to start...</p>
+        </div>
+        
+        <div class="sleep-overlay" id="sleepOverlay">
+            <div id="sleepText">You fell asleep... The monster is getting closer...</div>
+        </div>
+    </div>
+
+    <script src="game.js"></script>
+</body>
+</html>
