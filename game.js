@@ -415,13 +415,13 @@ class SecurityGuardGame {
         this.ctx.fillStyle = '#000811';
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
         
-        // Add vignette effect for atmosphere
+        // Add subtle vignette effect for atmosphere
         const vignette = this.ctx.createRadialGradient(
             this.canvas.width / 2, this.canvas.height / 2, 0,
-            this.canvas.width / 2, this.canvas.height / 2, Math.max(this.canvas.width, this.canvas.height) * 0.8
+            this.canvas.width / 2, this.canvas.height / 2, Math.max(this.canvas.width, this.canvas.height) * 0.9
         );
         vignette.addColorStop(0, 'rgba(0, 8, 17, 0)');
-        vignette.addColorStop(1, 'rgba(0, 8, 17, 0.6)');
+        vignette.addColorStop(1, 'rgba(0, 8, 17, 0.2)');
         this.ctx.fillStyle = vignette;
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
         
@@ -442,21 +442,18 @@ class SecurityGuardGame {
     }
     
     renderScreenGrain() {
-        // Add subtle grain effect for atmosphere
-        const imageData = this.ctx.createImageData(this.canvas.width, this.canvas.height);
-        const data = imageData.data;
-        
-        for (let i = 0; i < data.length; i += 4) {
-            if (Math.random() > 0.97) {
-                const intensity = Math.random() * 30;
-                data[i] = intensity;     // Red
-                data[i + 1] = intensity; // Green  
-                data[i + 2] = intensity; // Blue
-                data[i + 3] = 20;        // Alpha
+        // Add very subtle grain effect for atmosphere
+        this.ctx.globalAlpha = 0.05;
+        for (let i = 0; i < 100; i++) {
+            if (Math.random() > 0.95) {
+                const x = Math.random() * this.canvas.width;
+                const y = Math.random() * this.canvas.height;
+                const intensity = Math.random() * 50 + 50;
+                this.ctx.fillStyle = `rgb(${intensity}, ${intensity}, ${intensity})`;
+                this.ctx.fillRect(x, y, 1, 1);
             }
         }
-        
-        this.ctx.putImageData(imageData, 0, 0);
+        this.ctx.globalAlpha = 1.0;
     }
     
     renderSky() {
