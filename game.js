@@ -12,10 +12,11 @@ class SecurityGuardGame {
         
         // Action bar mechanics
         this.actionBarValue = 100; // 0-100
-        this.actionBarDepletionRate = 0.3; // starts slow
-        this.baseDepletionRate = 0.3;
-        this.maxDepletionRate = 2.0;
-        this.difficultyIncrease = 0.001; // gradual increase
+        this.actionBarDepletionRate = 0.15; // starts slower
+        this.baseDepletionRate = 0.15;
+        this.maxDepletionRate = 0.8; // reduced max difficulty
+        this.difficultyIncrease = 0.0003; // much more gradual increase
+        this.difficultyLevel = 0; // tracks current difficulty level
         
         // Monster mechanics
         this.monsterDistance = 100; // meters
@@ -275,6 +276,13 @@ class SecurityGuardGame {
         this.isAsleep = false;
         this.actionBarValue = 100;
         
+        // Reset difficulty progression after monster advances
+        this.difficultyLevel = Math.max(0, this.difficultyLevel - 0.3);
+        this.actionBarDepletionRate = Math.max(
+            this.baseDepletionRate,
+            this.baseDepletionRate + (this.difficultyLevel * this.difficultyIncrease * 1000)
+        );
+        
         // Hide sleep overlay
         const overlay = document.getElementById('sleepOverlay');
         const sleepText = document.getElementById('sleepText');
@@ -306,11 +314,11 @@ class SecurityGuardGame {
             this.napCooldown = Math.max(0, this.napCooldown - deltaTime);
         }
         
-        // Increase difficulty over time
-        const difficultyMultiplier = 1 + (this.survivalTime * this.difficultyIncrease);
+        // Increase difficulty over time more gradually
+        this.difficultyLevel += deltaTime * this.difficultyIncrease;
         this.actionBarDepletionRate = Math.min(
             this.maxDepletionRate,
-            this.baseDepletionRate * difficultyMultiplier
+            this.baseDepletionRate + (this.difficultyLevel * 0.001)
         );
         
         if (!this.isAsleep) {
